@@ -385,7 +385,7 @@ namespace ScreenToGif.Windows
             GridSizeGrid.Visibility = Visibility.Visible;
             _latestGridSize = UserSettings.All.GridSize;
 
-            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => GridHeightIntegerUpDown.Focus()));
+            Dispatcher.Invoke(DispatcherPriority.Background, new Action(() => GridHeightIntegerUpDown.Focus()));
 
             GridWidthIntegerUpDown.ValueChanged += GridSizeIntegerUpDown_ValueChanged;
             GridHeightIntegerUpDown.ValueChanged += GridSizeIntegerUpDown_ValueChanged;
@@ -410,7 +410,7 @@ namespace ScreenToGif.Windows
 
         private void ApplySizeButton_Click(object sender, RoutedEventArgs e)
         {
-            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => GridSizeBorder.Focus()));
+            Dispatcher.Invoke(DispatcherPriority.Background, new Action(() => GridSizeBorder.Focus()));
             GridSizeGrid.Visibility = Visibility.Collapsed;
 
             GridSizeIntegerUpDown_ValueChanged(sender, e);
@@ -418,7 +418,7 @@ namespace ScreenToGif.Windows
 
         private void CancelSizeButton_Click(object sender, RoutedEventArgs e)
         {
-            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => GridSizeBorder.Focus()));
+            Dispatcher.Invoke(DispatcherPriority.Background, new Action(() => GridSizeBorder.Focus()));
             GridSizeGrid.Visibility = Visibility.Collapsed;
             UserSettings.All.GridSize = _latestGridSize;
 
@@ -1067,7 +1067,7 @@ namespace ScreenToGif.Windows
         }
 
 
-        private void CheckSpace(bool force = false)
+        private async void CheckSpace(bool force = false)
         {
             if (_isBusy && !force)
                 return;
@@ -1101,13 +1101,27 @@ namespace ScreenToGif.Windows
             #endregion
 
             //Calculates the quantity of files and folders.
-            _checkDrive = CheckDrive;
-            _checkDrive.BeginInvoke(CheckDriveCallBack, null);
+            await Task.Run(CheckDrive);
+
+            try
+            {
+                App.MainViewModel.CheckDiskSpace();
+
+                FilesRun.Text = _fileCount == 0 ? LocalizationHelper.Get("S.Options.Storage.Status.Files.None") :
+                LocalizationHelper.GetWithFormat("S.Options.Storage.Status.Files." + (_fileCount > 1 ? "Plural" : "Singular"), "{0} files", _fileCount);
+                FoldersRun.Text = _folderList.Count == 0 ? LocalizationHelper.Get("S.Options.Storage.Status.Folders.None") :
+                LocalizationHelper.GetWithFormat("S.Options.Storage.Status.Folders." + (_folderList.Count > 1 ? "Plural" : "Singular"), "{0} folders", _folderList.Count);
+                UsedSpaceRun.Text = LocalizationHelper.GetWithFormat("S.Options.Storage.Status.InUse", "{0} in use", Humanizer.BytesToString(_cacheSize));
+                FilesTextBlock.Visibility = Visibility.Visible;
+                StatusProgressBar.IsIndeterminate = false;
+            }
+            catch (Exception)
+            { }
+            finally
+            {
+                _isBusy = false;
+            }
         }
-
-        private delegate void CheckDriveDelegate();
-
-        private CheckDriveDelegate _checkDrive;
 
         private void CheckDrive()
         {
@@ -1127,33 +1141,6 @@ namespace ScreenToGif.Windows
             _folderList = Directory.GetDirectories(cache).Select(x => new DirectoryInfo(x)).ToList();
             _fileCount = _folderList.Sum(folder => Directory.EnumerateFiles(folder.FullName).Count());
             _cacheSize = _folderList.Sum(s => s.EnumerateFiles("*.*", SearchOption.AllDirectories).Sum(fi => fi.Length));
-        }
-
-        private void CheckDriveCallBack(IAsyncResult r)
-        {
-            try
-            {
-                _checkDrive.EndInvoke(r);
-
-                Dispatcher.Invoke(() =>
-                {
-                    App.MainViewModel.CheckDiskSpace();
-
-                    FilesRun.Text = _fileCount == 0 ? LocalizationHelper.Get("S.Options.Storage.Status.Files.None") : 
-                    LocalizationHelper.GetWithFormat("S.Options.Storage.Status.Files." + (_fileCount > 1 ? "Plural" : "Singular"), "{0} files", _fileCount);
-                    FoldersRun.Text = _folderList.Count == 0 ? LocalizationHelper.Get("S.Options.Storage.Status.Folders.None") : 
-                    LocalizationHelper.GetWithFormat("S.Options.Storage.Status.Folders." + (_folderList.Count > 1 ? "Plural" : "Singular"), "{0} folders", _folderList.Count);
-                    UsedSpaceRun.Text = LocalizationHelper.GetWithFormat("S.Options.Storage.Status.InUse", "{0} in use", Humanizer.BytesToString(_cacheSize));
-                    FilesTextBlock.Visibility = Visibility.Visible;
-                    StatusProgressBar.IsIndeterminate = false;
-                });
-            }
-            catch (Exception)
-            { }
-            finally
-            {
-                _isBusy = false;
-            }
         }
 
         #endregion

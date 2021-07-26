@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -1799,9 +1799,10 @@ namespace ScreenToGif.Util
         /// <summary>
         /// Captures the screen using the SourceCopy | CaptureBlt.
         /// </summary>
-        /// <param name="size">The size of the final image.</param>
+        /// <param name="height">Height of the capture region.</param>
         /// <param name="positionX">Source capture Left position.</param>
         /// <param name="positionY">Source capture Top position.</param>
+        /// <param name="width">Width of the capture region.</param>
         /// <returns>A bitmap with the capture rectangle.</returns>
         public static Image Capture(int width, int height, int positionX, int positionY)
         {
@@ -1813,8 +1814,6 @@ namespace ScreenToGif.Util
 
             try
             {
-                new System.Security.Permissions.UIPermission(System.Security.Permissions.UIPermissionWindow.AllWindows).Demand();
-
                 var b = BitBlt(hDest, 0, 0, width, height, hSrce, positionX, positionY, CopyPixelOperation.SourceCopy | CopyPixelOperation.CaptureBlt);
 
                 return b ? Image.FromHbitmap(hBmp) : null;
